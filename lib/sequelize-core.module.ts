@@ -8,7 +8,7 @@ import {
   Type,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { defer, lastValueFrom } from 'rxjs';
+import { defer } from 'rxjs';
 import { Sequelize, SequelizeOptions } from 'sequelize-typescript';
 import {
   generateString,
@@ -16,6 +16,7 @@ import {
   handleRetry,
 } from './common/sequelize.utils';
 import { EntitiesMetadataStorage } from './entities-metadata.storage';
+import { ExtendableModelsProvider } from './extendable-models.provider';
 import {
   SequelizeModuleAsyncOptions,
   SequelizeModuleOptions,
@@ -26,6 +27,7 @@ import {
   SEQUELIZE_MODULE_ID,
   SEQUELIZE_MODULE_OPTIONS,
 } from './sequelize.constants';
+import { SequelizeExtended } from './sequelize.extended';
 
 @Global()
 @Module({})
@@ -130,29 +132,40 @@ export class SequelizeCoreModule implements OnApplicationShutdown {
     };
   }
 
+  /**
+   * (changed)
+   *
+   * @param {SequelizeModuleOptions} options
+   * @returns
+   */
   private static async createConnectionFactory(
     options: SequelizeModuleOptions,
-  ): Promise<Sequelize> {
-    return lastValueFrom(
-      defer(async () => {
-        if (!options.autoLoadModels) {
-          return new Sequelize(options as SequelizeOptions);
-        }
+  ): Promise<SequelizeExtended | undefined> {
+    const pluginDirectory = options.pluginsDirectory;
+    if (!pluginDirectory) {
+      throw new Error('plugins directory option is missing');
+    }
 
-        const connectionToken = options.name || DEFAULT_CONNECTION_NAME;
-        const sequelize = new Sequelize(options);
-        const models = EntitiesMetadataStorage.getEntitiesByConnection(
-          connectionToken,
-        );
-        sequelize.addModels(models as any);
+    return defer(async () => {
+      const connectionToken = options.name || DEFAULT_CONNECTION_NAME;
+      const sequelize = new SequelizeExtended(options);
+      const models =
+        EntitiesMetadataStorage.getEntitiesByConnection(connectionToken);
+      const extendableModels = await ExtendableModelsProvider.convertModels(
+        models,
+        pluginDirectory,
+      );
 
-        await sequelize.authenticate();
+      sequelize.addExtendableModels(extendableModels);
 
-        if (typeof options.synchronize === 'undefined' || options.synchronize) {
-          await sequelize.sync(options.sync);
-        }
-        return sequelize;
-      }).pipe(handleRetry(options.retryAttempts, options.retryDelay)),
-    );
+      await sequelize.authenticate();
+
+      if (typeof options.synchronize === 'undefined' || options.synchronize) {
+        await sequelize.sync(options.sync);
+      }
+      return sequelize;
+    })
+      .pipe(handleRetry(options.retryAttempts, options.retryDelay))
+      .toPromise();
   }
 }

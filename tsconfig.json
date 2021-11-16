@@ -2,7 +2,6 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
-    "strict": true,
     "removeComments": true,
     "noLib": false,
     "emitDecoratorMetadata": true,
@@ -14,11 +13,11 @@
     "skipLibCheck": true
   },
   "include": [
-    "lib/**/*"
+    "lib/**/*",
+    "tests/**/*"
   ],
   "exclude": [
     "node_modules",
-    "**/*.spec.ts",
-    "tests",
+    "**/*.spec.ts"
   ]
 }

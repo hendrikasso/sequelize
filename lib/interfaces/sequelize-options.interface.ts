@@ -18,14 +18,15 @@ export type SequelizeModuleOptions = {
    */
   retryDelay?: number;
   /**
-   * If `true`, models will be loaded automatically.
-   */
-  autoLoadModels?: boolean;
-  /**
    * If `true`, "sequelize.sync()" will be called.
    * Default: true
    */
   synchronize?: boolean;
+
+  /**
+   * Plugins directory
+   */
+  pluginsDirectory?: string;
 } & Partial<SequelizeOptions>;
 
 export interface SequelizeOptionsFactory {

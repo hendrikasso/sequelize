@@ -20,7 +20,7 @@ export class EntitiesMetadataStorage {
       collection = [];
       this.storage.set(connectionToken, collection);
     }
-    entities.forEach(entity => {
+    entities.forEach((entity) => {
       if (collection!.includes(entity)) {
         return;
       }
